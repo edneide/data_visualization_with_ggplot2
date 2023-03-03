@@ -1,0 +1,240 @@
+---
+title: "Chapter 03 - Geometries"
+author: "Edneide Ramalho"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: 
+    html_document:
+      highlight: textmate
+      logo: logo.png
+      theme: cerulean
+      number_sections: yes
+      toc: yes
+      toc_float:
+        collapsed: yes
+        smooth_scroll: no
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+# **Imports**
+
+```{r}
+library(tidyverse)
+```
+
+# **Overplotting 1: large datasets**
+
+Scatter plots (using `geom_point()`) are intuitive, easily understood, and very common, but we must *always* consider **overplotting**, particularly in the following four situations:
+
+-   Large datasets
+
+-   Aligned values on a single axis
+
+-   Low-precision data
+
+-   Integer data
+
+Typically, *alpha* blending (i.e. adding transparency) is recommended when using solid shapes. Alternatively, you can use opaque, hollow shapes.
+
+Small points are suitable for large datasets with regions of high density (lots of overlapping).
+
+Let's use the `diamonds` dataset to practice dealing with the large dataset case.
+
+1.  Add a points layer to the base plot.
+
+-   Set the point transparency to `0.5`.
+
+-   Set `shape = "."`, the point size of 1 pixel.
+
+```{r}
+# Plot price vs. carat, colored by clarity
+plt_price_vs_carat_by_clarity <- ggplot(diamonds, aes(carat, price, color = clarity))
+
+# Add a point layer with tiny points
+plt_price_vs_carat_by_clarity + 
+  geom_point(alpha = 0.5, shape = ".")
+```
+
+2.  Update the point shape to remove the line outlines by setting `shape` to `16`.
+
+```{r}
+# Add a point layer with tiny points
+plt_price_vs_carat_by_clarity + 
+  geom_point(alpha = 0.5, shape = 16)
+```
+
+# **Overplotting 2: Aligned values**
+
+Let's take a look at another case where we should be aware of overplotting: Aligning values on a single axis.
+
+This occurs when one axis is continuous and the other is categorical, which can be overcome with some form of jittering.
+
+In the `mtcars` data set, `fam` and `fcyl` are categorical variants of `cyl` and `am`.
+
+```{r}
+mtcars2 <- mtcars %>% 
+  mutate(fcyl = factor(cyl), 
+         fam = ifelse(am == 0, "automatic", "manual"))
+```
+
+1.  Create a base plot `plt_mpg_vs_fcyl_by_fam` of `fcyl` by `mpg`, colored by `fam`.
+
+-   Add a points layer to the base plot.
+
+```{r}
+# Plot base
+plt_mpg_vs_fcyl_by_fam <- ggplot(mtcars2, aes(fcyl, mpg, color = fam))
+
+# Default points are shown for comparison
+plt_mpg_vs_fcyl_by_fam + 
+  geom_point()
+```
+
+2.  Add some jittering by using `position_jitter()`, setting the `width` to `0.3`.
+
+```{r}
+# Plot base
+plt_mpg_vs_fcyl_by_fam <- ggplot(mtcars2, aes(fcyl, mpg, color = fam))
+
+# Default points are shown for comparison
+plt_mpg_vs_fcyl_by_fam + 
+  geom_point()
+
+# Alter the point positions by jittering, width 0.3
+plt_mpg_vs_fcyl_by_fam +   
+  geom_point(position = position_jitter(width = 0.3))
+```
+
+3.  Alternatively, use `position_jitterdodge()`. Set `jitter.width` and `dodge.width` to `0.3` to separate subgroups further.
+
+```{r}
+# Plot base
+plt_mpg_vs_fcyl_by_fam <- ggplot(mtcars2, aes(fcyl, mpg, color = fam))
+
+# Default points are shown for comparison
+plt_mpg_vs_fcyl_by_fam + 
+  geom_point()
+
+# Now jitter and dodge the point positions
+plt_mpg_vs_fcyl_by_fam + 
+  geom_point(position = position_jitterdodge(jitter.width = 0.3, dodge.width = 0.3))
+```
+
+# **Overplotting 3: Low-precision data**
+
+You already saw how to deal with overplotting when using [**`geom_point()`**](http://www.rdocumentation.org/packages/ggplot2/functions/geom_point) in two cases:
+
+1.  Large datasets
+
+2.  Aligned values on a single axis
+
+We used `position = 'jitter'` inside [**`geom_point()`**](http://www.rdocumentation.org/packages/ggplot2/functions/geom_point) or [**`geom_jitter()`**](http://www.rdocumentation.org/packages/ggplot2/functions/geom_jitter).
+
+Let's take a look at another case:
+
+1.  Low-precision data
+
+This results from low-resolution measurements like in the iris dataset, which is measured to 1mm precision (see viewer). It's similar to case 2, but in this case we can jitter on both the x and y axis.
+
+-   [1](javascript:void(0))
+
+    -   Change the points layer into a jitter layer.
+
+    -   Reduce the jitter layer's width by setting the `width` argument to `0.1`.
+
+```{r}
+ggplot(iris, aes(Sepal.Length, Sepal.Width, color = Species)) +
+  # Swap for jitter layer with width 0.1
+  geom_jitter(alpha = 0.5, width = 0.1)
+```
+
+-   [2](javascript:void(0))
+
+    Let's use a different approach:
+
+    -   Within `geom_point()`, set `position` to `"jitter"`.
+
+```{r}
+ggplot(iris, aes(Sepal.Length, Sepal.Width, color = Species)) +
+  # Set the position to jitter
+  geom_point(position = "jitter", alpha = 0.5)
+```
+
+-   [3](javascript:void(0))
+
+    Provide an alternative specification:
+
+    -   Have the `position` argument call `position_jitter()` with a `width` of `0.1`.
+
+```{r}
+ggplot(iris, aes(Sepal.Length, Sepal.Width, color = Species)) +
+  # Use a jitter position function with width 0.1
+  geom_point(alpha = 0.5, position = position_jitter(width = 0.1))
+```
+
+# **Overplotting 4: Integer data**
+
+Let's take a look at the last case of dealing with overplotting:
+
+1.  Integer data
+
+This can be type `integer` (i.e. 1 ,2, 3...) or categorical (i.e. class `factor`) variables. `factor` is just a special class of type `integer`.
+
+You'll typically have a small, defined number of intersections between two variables, which is similar to case 3, but you may miss it if you don't realize that integer and factor data are the same as low precision data.
+
+The `Vocab` dataset provided contains the years of education and vocabulary test scores from respondents to US General Social Surveys from 1972-2004.
+
+```{r}
+# Vocab data
+library(car)
+```
+
+-   l[1](javascript:void(0))
+
+    -   Examine the `Vocab` dataset using `str()`.
+
+    -   Using `Vocab`, draw a plot of `vocabulary` vs `education`.
+
+    -   Add a point layer.
+
+    ```{r}
+    # Examine the structure of Vocab
+    str(Vocab)
+
+    ```
+
+    ```{r}
+    # Plot vocabulary vs. education
+    ggplot(Vocab, aes(education, vocabulary)) +
+      # Add a point layer
+      geom_point()
+    ```
+
+-   [2](javascript:void(0))
+
+    -   Replace the point layer with a jitter layer.
+
+```{r}
+ggplot(Vocab, aes(education, vocabulary)) +
+  geom_jitter()
+```
+
+-   [3](javascript:void(0))
+
+    -   Set the jitter transparency to `0.2`.
+
+```{r}
+ggplot(Vocab, aes(education, vocabulary)) +
+  geom_jitter(alpha = 0.2)
+```
+
+-   [4](javascript:void(0))
+
+    -   Set the shape of the jittered points to hollow circles, (shape `1`).\
+
+```{r}
+ggplot(Vocab, aes(education, vocabulary)) +
+  geom_jitter(alpha = 0.2, shape = 1)
+```
